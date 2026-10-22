@@ -359,6 +359,13 @@ Success targets: p50 < 300 ms on 1K context; clearly lower total power than base
 
 ---
 
+### Distribution (started 2026-10-23)
+
+- [x] Public GitHub repo: https://github.com/SorataBaka/ane-fim. Captured editor traffic, logs, raw powermetrics dumps and `experiments/` are gitignored (personal data). No LICENSE file yet (owner to choose).
+- [x] HF packages prepared locally (not uploaded) in `models/hf/`: `Qwen2.5-Coder-0.5B-ANE-ctx2048-LUT6` (474 MB) and `-FP16` (1.2 GB). Built from `prepare_hf.sh`, then flattened (no `ios/` subfolder), ANEMLL chat scripts removed, local-path comment block stripped from `meta.yaml`, Qwen's Apache-2.0 `LICENSE` added, custom model card (ANEMLL's template wrongly says MIT). Both verified to load and run from their folders.
+- [ ] Upload: `hf upload tianharjuno/Qwen2.5-Coder-0.5B-ANE-ctx2048-LUT6 models/hf/Qwen2.5-Coder-0.5B-ANE-ctx2048-LUT6 .` (same for FP16).
+- [ ] Swift port (3b) → single binary → Homebrew tap (`brew services` covers auto-start). Test on other chips/macOS versions.
+
 ## 7. Stop policy (generation)
 
 Stop when any is true:
