@@ -44,7 +44,7 @@ Key decision: **copy llama.cpp's `/infill` API** so the existing `llama.vscode` 
 
 | Part | Choice | Why |
 |---|---|---|
-| Model | `Qwen/Qwen2.5-Coder-0.5B` (**base**, not instruct) | Trained with FIM; small enough for ANE |
+| Model | `Qwen/Qwen2.5-Coder-1.5B` (**base**, not instruct), LUT6, 2 chunks. **Default since 2026-10-23**; 0.5B kept as the fast/low-power option | Trained with FIM; fits ANE; 1.5B 57% vs 0.5B 43% exact line completion (Phase 6 notes) |
 | Conversion | ANEMLL `convert_model.sh` (v0.3.5+) | Only maintained HF → ANE LLM pipeline |
 | Runtime | ANEMLL Swift package (`anemll-swift-cli`, AnemllCore) | Batch prefill + KV cache already done |
 | Server (prototype) | Python + FastAPI, adapted from `alexgusevski/anemll-server` | Fast to iterate |
@@ -354,7 +354,21 @@ Success targets: p50 < 300 ms on 1K context; clearly lower total power than base
 - [ ] Use `input_extra` → repo-level prompt with `<|repo_name|>` / `<|file_sep|>` (budget carefully, ctx is small).
 - [ ] Import-aware context. llama.vscode's snippets are not import-aware: it only adds chunks from the current file outside the prefix/suffix window, from files on save (around the cursor, or a random 32 lines), and from copied text. So a class imported from a far-away file usually isn't in context. Idea: the server parses import lines in the prefix, finds those files on disk (local server; `input_extra` filenames give absolute paths to anchor the project root), and adds a compact **outline** (class + method signatures, no bodies, ~50–150 tokens each) as `<|file_sep|>path` entries. Catch: the current file's path is not in the request, so relative imports (`from ..x import Y`) need guessing; absolute/package imports are easy. Workaround until then: copy the class definition (`Cmd+C`) to push it into the extension's snippets.
 - [ ] Add `/v1/completions` (`prompt` + `suffix`) for Continue.
-- [ ] Try 1.5B model if latency allows.
+- [x] Try 1.5B model if latency allows.
+  - 2026-10-23: `SIZE=1.5B CHUNK=2 CONTEXT=2048 scripts/convert.sh lut6` → `models/qwen25coder-1.5b-ctx2048-lut6/` (47 min; ~1.3 GB: embeddings 169 MB, 2 × 477 MB transformer chunks, LM head 169 MB). FP16 preflight 100% OK. ANEMLL recommends 2 chunks for LUT6 (a single chunk would be ~1 GB).
+  - Engine handles multi-chunk (one shared KV state; per-chunk list supported too). `make test SIZE=1.5b`: **20/20 cached == uncached**.
+  - Quality vs HF 1.5B FP32: 10/20 exact → **13/20 when any stop token counts as equal** (`compare_hf.py` now does this). All 7 others are valid code, mostly near-ties (margins 0.08–0.45). LUT6 changes the 1.5B's choices more than the 0.5B's, but the answers are richer/better (e.g. Swift `$0.uppercased()` where 0.5B gave JS `toUpperCase()`).
+  - Speed (`chat.py`, 774-token prompt): decode **30 tok/s (~33 ms/token)** vs 73 for 0.5B; prefill ~690 ms vs ~333.
+  - Replay (460 requests): **p50 140 ms** (0.5B ~55–62), p95 539 ms (hard cap), generated p95 15 tokens (the 500 ms cap hits sooner).
+  - Run: `make start SIZE=1.5b`. License: Apache 2.0 (unlike 3B).
+  - Objective check `eval/line_completion.py`: 150 random cut points in real ANEMLL source (Python + Swift, written after Qwen2.5-Coder's training data); complete the rest of the line (seed 0, LUT6 both):
+
+    | Model | Exact match | Edit similarity | Exact (Python / Swift) |
+    |---|---|---|---|
+    | 0.5B | 43% | 0.72 | 43% / 45% |
+    | 1.5B | **57%** | **0.82** | 56% / 58% |
+
+    Head-to-head, only one model right: 1.5B 23 cases vs 0.5B 3. (The script's latency column is cold full prefill on ~1.9K-token prompts, not live latency; see the replay numbers above.) Owner couldn't feel the difference while typing, but it shows up clearly on harder mid-line cases (right variable names, API arguments).
 - [ ] README with setup steps.
 
 ---

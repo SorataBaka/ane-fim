@@ -180,14 +180,15 @@ def main():
     ap.add_argument("--eog-rule", action="store_true",
                     help="llama.cpp infill-style early end-of-text (needs lut6-logits). Off by default: "
                          "it mostly cuts suggestions short (see CLAUDE.md Phase 3a)")
-    ap.add_argument("--meta", help="explicit meta.yaml (overrides --model)")
+    ap.add_argument("--size", default="1.5b", help="model size folder: 1.5b (default) or 0.5b")
+    ap.add_argument("--meta", help="explicit meta.yaml (overrides --model/--size)")
     ap.add_argument("--port", type=int, default=8012)
     ap.add_argument("--max-tokens", type=int, default=48, help="server cap on n_predict")
     ap.add_argument("--hard-ms", type=float, default=500, help="stop generating after this, newline or not")
     ap.add_argument("--suffix-tokens", type=int, default=128, help="max suffix tokens (re-prefilled every keystroke)")
     cfg = ap.parse_args()
 
-    meta = cfg.meta or PROJECT_DIR / f"models/qwen25coder-0.5b-ctx2048-{cfg.model}/meta.yaml"
+    meta = cfg.meta or PROJECT_DIR / f"models/qwen25coder-{cfg.size.lower()}-ctx2048-{cfg.model}/meta.yaml"
     threading.Thread(target=load, args=(meta,), daemon=True).start()
     print(f"listening on http://127.0.0.1:{cfg.port} (loading {cfg.model})", flush=True)
     ThreadingHTTPServer(("127.0.0.1", cfg.port), Handler).serve_forever()

@@ -56,12 +56,13 @@ def hf_generate(model, ids):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--meta", required=True)
+    ap.add_argument("--hf-model", default=HF_MODEL, help="HF reference, e.g. Qwen/Qwen2.5-Coder-1.5B")
     a = ap.parse_args()
 
     tokenizer, embed, ffns, lmhead, metadata = ane.load(a.meta)
     ctx, batch = metadata["context_length"], metadata.get("batch_size", 64)
     causal_mask = ane.chat.initialize_causal_mask(ctx, True)
-    hf = AutoModelForCausalLM.from_pretrained(HF_MODEL, torch_dtype=torch.float32).eval()
+    hf = AutoModelForCausalLM.from_pretrained(a.hf_model, dtype=torch.float32).eval()
     ane.MAX_NEW = N_TOKENS
 
     passed = 0
@@ -74,7 +75,9 @@ def main():
         ane_out = ane.generate(embed, ffns, lmhead, metadata, ids, state, causal_mask, ctx)
         hf_out, margins = hf_generate(hf, ids)
 
-        same = ane_out == hf_out
+        # Any stop token ends the completion the same way, so <|fim_pad|> == <|endoftext|> here.
+        norm = lambda toks: [-1 if t in ane.STOP_IDS else t for t in toks]
+        same = norm(ane_out) == norm(hf_out)
         passed += same
         print(f"{'PASS' if same else 'FAIL'}  {name:28s} {repr(tokenizer.decode(hf_out))[:70]}")
         if not same:

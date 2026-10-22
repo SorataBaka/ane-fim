@@ -27,9 +27,10 @@ MAX_TOKENS = 16
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", default="lut6")
+    ap.add_argument("--size", default="1.5b")
     a = ap.parse_args()
 
-    eng = Engine(PROJECT_DIR / f"models/qwen25coder-0.5b-ctx2048-{a.model}/meta.yaml")
+    eng = Engine(PROJECT_DIR / f"models/qwen25coder-{a.size.lower()}-ctx2048-{a.model}/meta.yaml")
     pb = PromptBuilder(eng.tokenizer, eng.ctx)
     passed = 0
     cases = load_cases()

@@ -1,12 +1,16 @@
 #!/bin/bash
 # Convert Qwen2.5-Coder-0.5B (base) to Core ML for the ANE using ANEMLL.
-# Usage: [CONTEXT=2048] [ARGMAX=0] scripts/convert.sh [fp16|lut6]   (defaults: 1024, argmax on, fp16)
+# Usage: [SIZE=1.5B] [CHUNK=2] [CONTEXT=2048] [ARGMAX=0] scripts/convert.sh [fp16|lut6]
+#   defaults: SIZE=0.5B, CHUNK=1, CONTEXT=1024, argmax on, fp16
 # ARGMAX=0 keeps full logits (needed for the infill EOG stop rule); output dir gets a "-logits" suffix.
+# CHUNK: see `python anemll/utils/calc_chunk_split.py Qwen/Qwen2.5-Coder-<SIZE> --lut 6` (1.5B LUT6 → 2).
 set -euo pipefail
 
 ANEMLL_DIR="${ANEMLL_DIR:-$HOME/src/Anemll}"   # pinned at tag 0.3.5_beta
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-MODEL="Qwen/Qwen2.5-Coder-0.5B"
+SIZE="${SIZE:-0.5B}"
+CHUNK="${CHUNK:-1}"
+MODEL="Qwen/Qwen2.5-Coder-${SIZE}"
 CONTEXT="${CONTEXT:-1024}"
 BATCH=64
 MODE="${1:-fp16}"
@@ -26,7 +30,8 @@ if [ "${ARGMAX:-1}" = "0" ]; then
     SUFFIX="-logits"
 fi
 
-OUT="$PROJECT_DIR/models/qwen25coder-0.5b-ctx${CONTEXT}-${MODE}${SUFFIX}"
+SIZE_LC="$(echo "$SIZE" | tr '[:upper:]' '[:lower:]')"
+OUT="$PROJECT_DIR/models/qwen25coder-${SIZE_LC}-ctx${CONTEXT}-${MODE}${SUFFIX}"
 mkdir -p "$OUT"
 
 cd "$ANEMLL_DIR"
@@ -36,7 +41,7 @@ source env-anemll/bin/activate
     --output "$OUT" \
     --context "$CONTEXT" \
     --batch "$BATCH" \
-    --chunk 1 \
+    --chunk "$CHUNK" \
     ${ARGMAX_FLAG[@]+"${ARGMAX_FLAG[@]}"} \
     "${QUANT[@]}" \
     2>&1 | tee "$OUT/convert.log"

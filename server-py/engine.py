@@ -86,6 +86,10 @@ class Engine:
         self.state = chat.create_unified_state(self.ffns, self.ctx, True, metadata=md)
         self.cached = []  # tokens whose KV is valid in self.state, in order
 
+    def _chunk_state(self, i):
+        """KV state for FFN chunk i: usually one state shared by all chunks, a list for older conversions."""
+        return self.state[i] if isinstance(self.state, list) else self.state
+
     def _prefill(self, ids, start, end):
         """Write KV for ids[start:end]. Diffs go in one padded 64-batch (~28 ms); 1 token uses infer."""
         pos = start
@@ -97,13 +101,13 @@ class Engine:
             else:
                 chunk, fn, size, n = ids[pos:pos + 1], "infer", 1, 1
             hidden = self.embed.predict({"input_ids": np.array([chunk], dtype=np.int32)})["hidden_states"]
-            for ffn in self.ffns:
+            for i, ffn in enumerate(self.ffns):
                 hidden = ffn[fn].predict({
                     "hidden_states": hidden.astype(np.float16),
                     "position_ids": np.arange(pos, pos + size, dtype=np.int32),
                     "causal_mask": self.causal_mask[:, :, pos:pos + size, :].numpy().astype(np.float16),
                     "current_pos": np.array([pos], dtype=np.int32),
-                }, self.state)["output_hidden_states"]
+                }, self._chunk_state(i))["output_hidden_states"]
             pos += n
 
     def _next_token(self, cur, eog_rule):
@@ -113,13 +117,13 @@ class Engine:
                                             len(cur), self.ctx, self.metadata, self.state, self.causal_mask)
         pos = len(cur) - 1
         hidden = self.embed.predict({"input_ids": np.array([[cur[-1]]], dtype=np.int32)})["hidden_states"]
-        for ffn in self.ffns:
+        for i, ffn in enumerate(self.ffns):
             hidden = ffn["infer"].predict({
                 "hidden_states": hidden.astype(np.float16),
                 "position_ids": np.array([pos], dtype=np.int32),
                 "causal_mask": self.causal_mask[:, :, pos:pos + 1, :].numpy().astype(np.float16),
                 "current_pos": np.array([pos], dtype=np.int32),
-            }, self.state)["output_hidden_states"]
+            }, self._chunk_state(i))["output_hidden_states"]
         out = self.lmhead.predict({"hidden_states": hidden.astype(np.float16)})
         n = self.metadata["split_lm_head"]
         logits = np.concatenate([out[f"logits{i}"].reshape(-1) for i in range(1, n + 1)]).astype(np.float32)
