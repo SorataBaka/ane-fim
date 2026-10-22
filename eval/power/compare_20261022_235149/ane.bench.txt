@@ -1,0 +1,6 @@
+
+http://127.0.0.1:8012: 250 completions in 30.0 s (8.32/s)
+  latency ms      p50     64   p95    532   max    572
+  new prompt tok  p50      3   p95     57
+  cached tok      p50      8
+  generated tok   p50      4   p95     37

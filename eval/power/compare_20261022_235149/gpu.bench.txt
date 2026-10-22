@@ -1,0 +1,6 @@
+
+http://127.0.0.1:8013: 343 completions in 30.0 s (11.43/s)
+  latency ms      p50     24   p95    449   max    700
+  new prompt tok  p50      4   p95     57
+  cached tok      p50   1197
+  generated tok   p50      2   p95     45

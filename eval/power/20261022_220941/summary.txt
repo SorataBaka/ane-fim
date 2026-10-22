@@ -1,0 +1,7 @@
+Model: ~/Documents/source_codes/ane_qwen_code/models/qwen25coder-0.5b-ctx1024-fp16
+Idle:
+  CPU    512 mW | GPU      1 mW | ANE      0 mW | Total    514 mW  (40 samples)
+Generating (ANE):
+  CPU    577 mW | GPU      2 mW | ANE   2692 mW | Total   3272 mW  (40 samples)
+Decode speed during run:
+  52.2 tok/s avg over 23 completions

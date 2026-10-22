@@ -1,0 +1,16 @@
+models/
+.venv/
+env-anemll/
+*.mlpackage
+*.mlmodelc
+__pycache__/
+.DS_Store
+
+# Personal data: captured editor traffic, server logs, raw powermetrics dumps
+eval/llama_vscode_requests/
+eval/logs/
+eval/power/**/*.power.txt
+eval/power/*/idle.txt
+eval/power/*/generate.txt
+eval/power/*/workload.log
+experiments/

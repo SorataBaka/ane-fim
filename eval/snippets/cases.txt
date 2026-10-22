@@ -1,0 +1,178 @@
+=== py_fib_body
+def fib(n):
+    <CURSOR>
+
+print(fib(10))
+=== py_midline_comprehension
+def evens(xs):
+    return [x for x in xs if <CURSOR>]
+=== py_call_args
+import json
+
+def save(obj, path):
+    with open(path, "w") as f:
+        json.dump(<CURSOR>)
+=== py_class_method
+class Stack:
+    def __init__(self):
+        self.items = []
+
+    def push(self, item):
+        self.items.append(item)
+
+    def pop(self):
+        <CURSOR>
+
+    def is_empty(self):
+        return len(self.items) == 0
+=== py_docstring_then_body
+def is_palindrome(s: str) -> bool:
+    """Return True if s reads the same forwards and backwards, ignoring case."""
+    <CURSOR>
+=== py_dict_access
+config = {"host": "localhost", "port": 8080, "debug": True}
+
+def get_url(cfg):
+    return f"http://{cfg['host']}:<CURSOR>"
+=== ts_fetch_json
+interface User {
+  id: number;
+  name: string;
+  email: string;
+}
+
+async function getUser(id: number): Promise<User> {
+  const res = await fetch(`/api/users/${id}`);
+  <CURSOR>
+}
+=== ts_array_filter
+const users = [
+  { name: "Ann", age: 31 },
+  { name: "Bob", age: 17 },
+];
+
+const adults = users.filter(<CURSOR>);
+=== ts_switch_case
+type Shape = { kind: "circle"; r: number } | { kind: "square"; size: number };
+
+function area(s: Shape): number {
+  switch (s.kind) {
+    case "circle":
+      return Math.PI * s.r * s.r;
+    case "square":
+      <CURSOR>
+  }
+}
+=== ts_debounce
+export function debounce<T extends (...args: any[]) => void>(fn: T, ms: number) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  return (...args: Parameters<T>) => {
+    <CURSOR>
+  };
+}
+=== ts_midline_import
+import { useState, <CURSOR> } from "react";
+
+export function Counter() {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    document.title = `Count: ${count}`;
+  }, [count]);
+  return <button onClick={() => setCount(count + 1)}>{count}</button>;
+}
+=== swift_struct_init
+struct Point {
+    var x: Double
+    var y: Double
+
+    func distance(to other: Point) -> Double {
+        <CURSOR>
+    }
+}
+=== swift_guard
+func parseAge(_ text: String) -> Int? {
+    guard let value = Int(text) else {
+        <CURSOR>
+    }
+    return value >= 0 ? value : nil
+}
+=== swift_map_call
+let names = ["ann", "bob", "cy"]
+let capitalized = names.map { <CURSOR> }
+print(capitalized)
+=== swift_enum_switch
+enum Direction {
+    case north, south, east, west
+}
+
+func opposite(_ d: Direction) -> Direction {
+    switch d {
+    case .north: return .south
+    case .south: return .north
+    <CURSOR>
+    }
+}
+=== go_error_check
+package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+	data, err := os.ReadFile("config.json")
+	if err != nil {
+		<CURSOR>
+	}
+	fmt.Println(string(data))
+}
+=== go_struct_method
+package shapes
+
+type Rect struct {
+	W, H float64
+}
+
+func (r Rect) Area() float64 {
+	<CURSOR>
+}
+
+func (r Rect) Perimeter() float64 {
+	return 2 * (r.W + r.H)
+}
+=== go_for_loop
+package main
+
+func sum(nums []int) int {
+	total := 0
+	for <CURSOR> {
+		total += n
+	}
+	return total
+}
+=== go_http_handler
+package main
+
+import (
+	"encoding/json"
+	"net/http"
+)
+
+type Status struct {
+	OK bool `json:"ok"`
+}
+
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	<CURSOR>
+}
+=== go_midline_printf
+package main
+
+import "fmt"
+
+func main() {
+	name, age := "Ann", 31
+	fmt.Printf("%s is %d years old\n", <CURSOR>)
+}
