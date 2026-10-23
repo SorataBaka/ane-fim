@@ -352,6 +352,18 @@ Success targets: p50 < 300 ms on 1K context; clearly lower total power than base
 - [ ] `launchd` user agent to auto-start the server at login; warm up the model on start.
 - [ ] Unload after N minutes idle; reload on first request.
 - [ ] Use `input_extra` → repo-level prompt with `<|repo_name|>` / `<|file_sep|>` (budget carefully, ctx is small).
+- [x] Cross-file context experiment (2026-10-23, "Step A": measure before building). **Result: no gain for the 1.5B; not integrated into the server.**
+  - `server-py/repo_index.py`: lightweight symbol graph (Python `ast` + brace-tracking Swift scanner, no deps). Outlines = signatures + first doc line, no bodies; Python import links; same-language filter. ANEMLL repo: 202 files / 891 symbols, build ~0.3–0.4 s, refresh with no changes 28 ms, retrieval ~1–3 ms. `PromptBuilder.build(..., context=(repo, [(path, outline)], current_path))` emits Qwen's repo-level header (`<|repo_name|>`, `<|file_sep|>`) before the FIM part; its tokens come out of the prefix budget.
+  - `eval/line_completion.py` variants (1.5B LUT6, ANEMLL corpus):
+
+    | Test | none | fmt (header only) | ctx (retrieved outlines, ~275–375 tok) | oracle (outlines of the answer's own cross-file names) |
+    |---|---|---|---|---|
+    | 150 random lines | 51% | | 49% (only-one-right: none 5, ctx 1) | |
+    | 120 lines using a name from another file (`--xfile-only`) | 34% | 34% | 32% (none 5, ctx 2) | 34% (none 4, oracle 4) |
+
+  - Even perfect (oracle) context doesn't help on average. It wins exactly the intended cases (e.g. `StorageService.shared.deleteConversation(conversation.id)` once the model sees StorageService's methods) but loses as many to distraction (`model_path` vs `model_dir`, dropped `if … else None`). The format itself is harmless. n=120 → a few-point effect can't be excluded; a large one can.
+  - Caveat: ANEMLL is mostly self-contained research scripts with lots of copy-paste; app-style code with classes spread across files may behave differently (test with `--corpus <your project>`). A gated variant (only add context when the identifier right before the cursor resolves to another file) is untested.
+  - Also found: the model sometimes writes `<|cursor|>` as plain text (5 normal tokens, not a special token) → `server.py` now cuts suggestions at any `<|…|>` marker.
 - [ ] Import-aware context. llama.vscode's snippets are not import-aware: it only adds chunks from the current file outside the prefix/suffix window, from files on save (around the cursor, or a random 32 lines), and from copied text. So a class imported from a far-away file usually isn't in context. Idea: the server parses import lines in the prefix, finds those files on disk (local server; `input_extra` filenames give absolute paths to anchor the project root), and adds a compact **outline** (class + method signatures, no bodies, ~50–150 tokens each) as `<|file_sep|>path` entries. Catch: the current file's path is not in the request, so relative imports (`from ..x import Y`) need guessing; absolute/package imports are easy. Workaround until then: copy the class definition (`Cmd+C`) to push it into the extension's snippets.
 - [ ] Add `/v1/completions` (`prompt` + `suffix`) for Continue.
 - [x] Try 1.5B model if latency allows.
@@ -377,7 +389,8 @@ Success targets: p50 < 300 ms on 1K context; clearly lower total power than base
 
 - [x] Public GitHub repo: https://github.com/SorataBaka/ane-fim. Captured editor traffic, logs, raw powermetrics dumps and `experiments/` are gitignored (personal data). No LICENSE file yet (owner to choose).
 - [x] HF packages prepared locally (not uploaded) in `models/hf/`: `Qwen2.5-Coder-0.5B-ANE-ctx2048-LUT6` (474 MB) and `-FP16` (1.2 GB). Built from `prepare_hf.sh`, then flattened (no `ios/` subfolder), ANEMLL chat scripts removed, local-path comment block stripped from `meta.yaml`, Qwen's Apache-2.0 `LICENSE` added, custom model card (ANEMLL's template wrongly says MIT). Both verified to load and run from their folders.
-- [ ] Upload: `hf upload tianharjuno/Qwen2.5-Coder-0.5B-ANE-ctx2048-LUT6 models/hf/Qwen2.5-Coder-0.5B-ANE-ctx2048-LUT6 .` (same for FP16).
+- [x] 1.5B package prepared (2026-10-23): `models/hf/Qwen2.5-Coder-1.5B-ANE-ctx2048-LUT6` (1.3 GB, 2 transformer chunks; `meta.yaml` names chunk 1, ANEMLL finds chunk 2 by filename). Same cleanup as above; Qwen2.5-Coder-1.5B is Apache 2.0 (same LICENSE text). Verified: loads both chunks and completes from its own folder. The 0.5B cards now say the 1.5B is ane-fim's default and link to it.
+- [ ] Upload: `hf upload tianharjuno/<name> models/hf/<name> .` for `Qwen2.5-Coder-1.5B-ANE-ctx2048-LUT6`, `Qwen2.5-Coder-0.5B-ANE-ctx2048-LUT6`, `Qwen2.5-Coder-0.5B-ANE-ctx2048-FP16`.
 - [ ] Swift port (3b) → single binary → Homebrew tap (`brew services` covers auto-start). Test on other chips/macOS versions.
 
 ## 7. Stop policy (generation)

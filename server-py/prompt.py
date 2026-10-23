@@ -7,6 +7,7 @@ A fresh cut leaves ~30% headroom so typing doesn't force a new cut right away.
 """
 
 FIM_PREFIX, FIM_MIDDLE, FIM_SUFFIX = 151659, 151660, 151661
+REPO_NAME, FILE_SEP = 151663, 151664
 ANCHOR_LINES = 3
 HEADROOM = 0.7
 
@@ -49,10 +50,23 @@ class PromptBuilder:
             used += counts[start]
         return start
 
-    def build(self, prefix, suffix, n_predict):
-        """Token ids for <|fim_prefix|>{prefix}<|fim_suffix|>{suffix}<|fim_middle|>."""
+    def _context_ids(self, context):
+        """Qwen repo-level header: <|repo_name|>repo, <|file_sep|>path + outline per file, then the current file."""
+        repo, files, current = context
+        ids = [REPO_NAME] + self._enc(f"{repo}\n")
+        for path, text in files:
+            ids += [FILE_SEP] + self._enc(f"{path}\n{text.rstrip()}\n")
+        return ids + [FILE_SEP] + self._enc(f"{current}\n")
+
+    def build(self, prefix, suffix, n_predict, context=None):
+        """Token ids for <|fim_prefix|>{prefix}<|fim_suffix|>{suffix}<|fim_middle|>.
+
+        context: optional (repo_name, [(path, outline_text)], current_path) placed before the
+        FIM part in Qwen's repo-level format. Its tokens come out of the prefix budget.
+        """
+        ctx_ids = self._context_ids(context) if context else []
         suf_ids = self._suffix(suffix)
-        budget = self.ctx - n_predict - self.margin - 3 - len(suf_ids)
+        budget = self.ctx - n_predict - self.margin - 3 - len(suf_ids) - len(ctx_ids)
 
         lines = prefix.splitlines(keepends=True)
         counts = self._line_counts(lines)
@@ -62,4 +76,4 @@ class PromptBuilder:
         pre_ids = self._enc("".join(lines[start:]))
         if len(pre_ids) > budget:  # per-line counts are approximate; rare
             pre_ids = pre_ids[-budget:]
-        return [FIM_PREFIX] + pre_ids + [FIM_SUFFIX] + suf_ids + [FIM_MIDDLE]
+        return ctx_ids + [FIM_PREFIX] + pre_ids + [FIM_SUFFIX] + suf_ids + [FIM_MIDDLE]

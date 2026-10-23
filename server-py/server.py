@@ -9,6 +9,7 @@ One model, one request at a time. A newer request cancels the one in flight
 
 import argparse
 import json
+import re
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -18,6 +19,7 @@ from engine import Engine
 from prompt import PromptBuilder
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
+MARKER_RE = re.compile(r"<\|[a-z_]+\|>")
 
 engine = None
 builder = None
@@ -103,7 +105,9 @@ def infill(body):
                                     stop_text=lambda t: rule(t)[1],
                                     eog_rule=cfg.eog_rule and "infill" in body.get("samplers", ["infill"]))
 
-    text, _ = rule(engine.tokenizer.decode(out, skip_special_tokens=True))
+    text = engine.tokenizer.decode(out, skip_special_tokens=True)
+    text = MARKER_RE.split(text, 1)[0]  # model sometimes writes "<|cursor|>" as plain text
+    text, _ = rule(text)
     text = trim_suffix_overlap(text, suffix)
     if info["stop_type"] in ("limit", "cancel") and "\n" in text.rstrip("\n"):
         text = text[:text.rstrip("\n").rfind("\n")]  # cut off before an unfinished last line
